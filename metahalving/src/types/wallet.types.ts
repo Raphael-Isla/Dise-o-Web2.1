@@ -41,15 +41,16 @@ export interface CryptoAsset {
 export interface Transaction {
   id: string;
   type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAW' | 'SWAP';
-  assetId: string;
-  symbol: string;
+  symbol: string; // Usa solo symbol (elimina assetSymbol)
   amount: number;
   price: number;
-  totalUSD: number;
+  total: number; // Usa solo total (elimina totalUSD)
   timestamp: Date;
   status: 'COMPLETED' | 'PENDING' | 'FAILED';
   fee?: number;
   description?: string;
+  txHash: string;
+  // ELIMINA: assetSymbol, totalUSD, assertEquals
 }
 
 export interface WalletState {

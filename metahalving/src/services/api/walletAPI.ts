@@ -1,4 +1,4 @@
-// src/services/api/walletAPI.ts
+// src/services/api/walletAPI.ts - VERSIÓN CORREGIDA
 import type { WalletState } from '../../types/wallet.types';
 
 // Mock data para desarrollo
@@ -45,10 +45,10 @@ const mockData: WalletState = {
     {
       id: 'tx_001',
       type: 'BUY',
-      assetSymbol: 'BTC',
+      symbol: 'BTC', // ← Solo symbol
       amount: 0.1,
       price: 44000,
-      total: 4400,
+      total: 4400, // ← Solo total
       timestamp: new Date('2024-01-15T10:30:00'),
       status: 'COMPLETED',
       txHash: '0xabc123def456...'
@@ -56,15 +56,18 @@ const mockData: WalletState = {
     {
       id: 'tx_002',
       type: 'SELL',
-      assetSymbol: 'ETH',
+      symbol: 'ETH', // ← Solo symbol
       amount: 0.5,
       price: 2900,
-      total: 1450,
+      total: 1450, // ← Solo total
       timestamp: new Date('2024-01-14T14:20:00'),
       status: 'COMPLETED',
       txHash: '0xdef456abc123...'
     }
   ],
+
+
+
   summary: {
     totalValue: 33600,
     totalChange24h: 850,
@@ -266,6 +269,7 @@ export const walletAPI = {
   },
   
   // Función para obtener transacciones
+  // Función para obtener transacciones
   getTransactions: async (limit: number = 50, offset: number = 0) => {
     console.log(`📋 Obteniendo transacciones (limit: ${limit}, offset: ${offset})`);
     
@@ -282,14 +286,15 @@ export const walletAPI = {
         const type = types[Math.floor(Math.random() * types.length)];
         const price = mockPrices[symbol] || 100;
         const amount = parseFloat((Math.random() * 5).toFixed(4));
+        const total = parseFloat((price * amount).toFixed(2)); // ← Calcula total
         
         transactions.push({
           id: `tx_${1000 + i}`,
           type,
-          assetSymbol: symbol,
+          symbol: symbol, // ← Solo symbol
           amount,
           price,
-          total: parseFloat((price * amount).toFixed(2)),
+          total, // ← Solo total
           timestamp: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
           status: 'COMPLETED',
           txHash: `0x${Math.random().toString(36).substr(2, 16)}...`

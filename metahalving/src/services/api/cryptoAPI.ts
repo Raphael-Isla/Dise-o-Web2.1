@@ -1,7 +1,7 @@
 // src/services/api/cryptoAPI.ts
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Extiende la interfaz CryptoPrice para incluir todas las propiedades necesarias
 export interface CryptoPrice {

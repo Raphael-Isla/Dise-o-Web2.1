@@ -26,7 +26,10 @@ class PriceFeedService {
   }
 
   private initializeSocket() {
-    const WS_URL = process.env.REACT_APP_WS_URL || 'http://localhost:3001';
+    // CORRECTO para Vite: usa import.meta.env
+    const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3001';
+    
+    console.log('Conectando a WebSocket:', WS_URL); // Para debug
     
     this.socket = io(WS_URL, {
       transports: ['websocket', 'polling'],

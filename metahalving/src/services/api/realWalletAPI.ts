@@ -2,8 +2,7 @@
 import axios from 'axios';
 import type { WalletState, CryptoAsset } from '../../types/wallet.types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 // Define el tipo PortfolioSummary aquí
 export interface PortfolioSummary {
   totalValue: number;
@@ -19,6 +18,7 @@ export class RealWalletAPI {
   async getPortfolio(userId?: string): Promise<WalletState> {
     try {
       // 1. Obtener portfolio del usuario (esto vendría de tu backend)
+       console.log('API URL:', API_BASE_URL); // Para debug
       const portfolioResponse = await axios.get(`${API_BASE_URL}/portfolio/${userId || 'demo'}`);
       
       // 2. Obtener precios actualizados para los assets

@@ -1,6 +1,6 @@
 // backend/src/routes/crypto.routes.ts
 import { Router } from 'express';
-import { cryptoController } from '../controllers/crypto.controller';
+import { cryptoController } from '../controllers/crypto.controller.js'; // Cambia a .js
 
 const router = Router();
 

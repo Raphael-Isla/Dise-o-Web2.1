@@ -1,3 +1,4 @@
+// src/App.tsx - VERSIÓN CORREGIDA
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Dashboard from './pages/Dashboard/Dashboard';
@@ -7,7 +8,8 @@ import Markets from './pages/Markets/Markets';
 import Settings from './pages/Settings/Settings';
 import Header from './components/Layout/Header/Header';
 import Sidebar from './components/Layout/Sidebar/Sidebar';
-import './styles/globals.css';
+// Elimina esta línea si globals.css no es necesario:
+// import './styles/globals.css';
 
 const App: React.FC = () => {
   return (

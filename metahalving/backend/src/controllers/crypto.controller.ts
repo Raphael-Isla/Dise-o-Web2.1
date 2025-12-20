@@ -1,49 +1,49 @@
 // backend/src/controllers/crypto.controller.ts
 import { Request, Response } from 'express';
-import { coingeckoService } from '../services/coingecko.service';
-import { binanceService } from '../services/binance.service';
 
-export class CryptoController {
-  async getTopCryptos(req: Request, res: Response) {
+export const cryptoController = {
+  getTopCryptos: async (req: Request, res: Response) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 50;
-      const cryptos = await coingeckoService.getTopCryptos(limit);
-      res.json(cryptos);
+      // Datos de ejemplo
+      const topCryptos = [
+        { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin', current_price: 45000 },
+        { id: 'ethereum', symbol: 'eth', name: 'Ethereum', current_price: 2500 },
+        { id: 'cardano', symbol: 'ada', name: 'Cardano', current_price: 0.5 }
+      ];
+      res.json(topCryptos);
     } catch (error) {
-      res.status(500).json({ error: 'Error fetching cryptocurrencies' });
+      res.status(500).json({ error: 'Error fetching top cryptos' });
     }
-  }
+  },
 
-  async getCryptoDetails(req: Request, res: Response) {
+  getCryptoDetails: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const details = await coingeckoService.getCryptoDetails(id);
-      res.json(details);
+      // Lógica para obtener detalles
+      res.json({ id, details: 'Crypto details here' });
     } catch (error) {
       res.status(500).json({ error: 'Error fetching crypto details' });
     }
-  }
+  },
 
-  async getPortfolioPrices(req: Request, res: Response) {
+  getPortfolioPrices: async (req: Request, res: Response) => {
     try {
       const { ids } = req.body;
-      if (!Array.isArray(ids)) {
-        return res.status(400).json({ error: 'IDs must be an array' });
-      }
-      
-      const prices = await coingeckoService.getMultiplePrices(ids);
+      // Datos de ejemplo
+      const prices = ids.reduce((acc: any, id: string) => {
+        acc[id] = {
+          current_price: Math.random() * 50000,
+          price_change_percentage_24h: Math.random() * 20 - 10
+        };
+        return acc;
+      }, {});
       res.json(prices);
     } catch (error) {
       res.status(500).json({ error: 'Error fetching portfolio prices' });
     }
-  }
+  },
 
-  async getWebSocketStatus(req: Request, res: Response) {
-    res.json({
-      connected: binanceService.isReady(),
-      message: binanceService.isReady() ? 'WebSocket connected' : 'WebSocket disconnected'
-    });
+  getWebSocketStatus: async (req: Request, res: Response) => {
+    res.json({ status: 'connected', timestamp: new Date().toISOString() });
   }
-}
-
-export const cryptoController = new CryptoController();
+};

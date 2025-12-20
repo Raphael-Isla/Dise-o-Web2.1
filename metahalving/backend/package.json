@@ -1,9 +1,9 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "dev": "nodemon src/server.ts",
+      "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "jest"
@@ -30,6 +30,8 @@
     "nodemon": "^3.1.11",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }
