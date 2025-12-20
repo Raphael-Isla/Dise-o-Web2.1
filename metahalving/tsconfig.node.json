@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "composite": true,  // ← ESTO ES OBLIGATORIO para proyectos referenciados
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    
+    /* IMPORTANTE: Quitar noEmit o cambiar a false */
+    "noEmit": false,  // ← Cambia de true a false
+    
+    /* Configuración para Node */
+    "types": ["node"]
+  },
+  "include": ["vite.config.ts"]
+}
