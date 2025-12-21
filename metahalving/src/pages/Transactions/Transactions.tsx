@@ -8,15 +8,18 @@ const Transactions: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadTransactions = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const data = await walletAPI.getTransactions();
         setTransactions(data);
-      } catch (error) {
-        console.error('Error loading transactions:', error);
+      } catch (err) {
+        console.error('Error loading transactions:', err);
+        setError('Error al cargar transacciones');
       } finally {
         setIsLoading(false);
       }
@@ -25,9 +28,10 @@ const Transactions: React.FC = () => {
     loadTransactions();
   }, []);
 
+  // ✅ CORREGIDO: Cambiar "assetSymbol" por "symbol"
   const filteredTransactions = transactions.filter(tx => {
     const matchesFilter = filter === 'all' || tx.type === filter.toUpperCase();
-    const matchesSearch = tx.assetSymbol.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch = tx.symbol.toLowerCase().includes(search.toLowerCase()) ||
                          tx.id.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
@@ -38,7 +42,7 @@ const Transactions: React.FC = () => {
       ...filteredTransactions.map(tx => [
         tx.id,
         tx.type,
-        tx.assetSymbol,
+        tx.symbol,
         tx.amount,
         tx.price,
         tx.total,
@@ -53,12 +57,22 @@ const Transactions: React.FC = () => {
     a.href = url;
     a.download = 'transacciones.csv';
     a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <h3 className="text-red-800 font-medium">Error cargando datos</h3>
+        <p className="text-red-600 text-sm mt-1">{error}</p>
       </div>
     );
   }
@@ -80,7 +94,7 @@ const Transactions: React.FC = () => {
             <input
               type="text"
               placeholder="Buscar transacción..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full md:w-64"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-primary-500"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -89,11 +103,11 @@ const Transactions: React.FC = () => {
           {/* Filtros */}
           <div className="flex gap-2">
             <select
-              className="border border-gray-300 rounded-lg px-3 py-2"
+              className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             >
-              <option value="all">Todos</option>
+              <option value="all">Todas</option>
               <option value="buy">Compras</option>
               <option value="sell">Ventas</option>
               <option value="deposit">Depósitos</option>
@@ -112,7 +126,7 @@ const Transactions: React.FC = () => {
       </div>
 
       {/* Tabla de Transacciones */}
-      <div className="card overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -144,75 +158,97 @@ const Transactions: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTransactions.map((tx) => (
-                <tr key={tx.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {tx.id.substring(0, 8)}...
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      tx.type === 'BUY' 
-                        ? 'bg-green-100 text-green-800'
-                        : tx.type === 'SELL'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {tx.type === 'BUY' ? 'COMPRA' : tx.type === 'SELL' ? 'VENTA' : tx.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {tx.assetSymbol}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {tx.amount}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${tx.price.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                    ${tx.total.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(tx.timestamp).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      tx.status === 'COMPLETED'
-                        ? 'bg-green-100 text-green-800'
-                        : tx.status === 'PENDING'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {tx.status === 'COMPLETED' ? 'COMPLETADO' : 
-                       tx.status === 'PENDING' ? 'PENDIENTE' : 'FALLIDO'}
-                    </span>
+              {filteredTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                    No hay transacciones que mostrar
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredTransactions.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {tx.id.substring(0, 8)}...
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          tx.type === 'BUY'
+                            ? 'bg-green-100 text-green-800'
+                            : tx.type === 'SELL'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        {tx.type === 'BUY'
+                          ? 'COMPRA'
+                          : tx.type === 'SELL'
+                          ? 'VENTA'
+                          : tx.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {tx.symbol.toUpperCase()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {tx.amount.toFixed(4)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${tx.price.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                      ${tx.total.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(tx.timestamp).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          tx.status === 'COMPLETED'
+                            ? 'bg-green-100 text-green-800'
+                            : tx.status === 'PENDING'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {tx.status === 'COMPLETED'
+                          ? 'COMPLETADO'
+                          : tx.status === 'PENDING'
+                          ? 'PENDIENTE'
+                          : 'FALLIDO'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
-
-      {/* Estadísticas */}
+{/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-2">Total Transacciones</h3>
-          <p className="text-3xl font-bold">{transactions.length}</p>
+        <div className="bg-gray-900 text-white rounded-xl border border-gray-800 p-6 hover:border-primary-600 transition-colors">
+          <h3 className="text-lg font-semibold mb-2 text-gray-200">Total Transacciones</h3>
+          <p className="text-4xl font-bold text-white">{transactions.length}</p>
+          <p className="text-sm text-gray-400 mt-2">todas las operaciones</p>
         </div>
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-2">Compras Realizadas</h3>
-          <p className="text-3xl font-bold text-green-600">
-            {transactions.filter(t => t.type === 'BUY').length}
+        <div className="bg-gray-900 text-white rounded-xl border border-gray-800 p-6 hover:border-green-600 transition-colors">
+          <h3 className="text-lg font-semibold mb-2 text-gray-200">Compras Realizadas</h3>
+          <p className="text-4xl font-bold text-green-400">
+            {transactions.filter((t) => t.type === 'BUY').length}
           </p>
+          <p className="text-sm text-gray-400 mt-2">operaciones de compra</p>
         </div>
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-2">Ventas Realizadas</h3>
-          <p className="text-3xl font-bold text-red-600">
-            {transactions.filter(t => t.type === 'SELL').length}
+        <div className="bg-gray-900 text-white rounded-xl border border-gray-800 p-6 hover:border-red-600 transition-colors">
+          <h3 className="text-lg font-semibold mb-2 text-gray-200">Ventas Realizadas</h3>
+          <p className="text-4xl font-bold text-red-400">
+            {transactions.filter((t) => t.type === 'SELL').length}
           </p>
+          <p className="text-sm text-gray-400 mt-2">operaciones de venta</p>
         </div>
       </div>
+      
     </div>
   );
 };

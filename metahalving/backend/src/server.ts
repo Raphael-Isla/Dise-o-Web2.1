@@ -117,6 +117,7 @@ app.get('/api/portfolio/:userId', (req, res) => {
 });
 
 // Ruta adicional para frontend
+/*
 app.get('/api/portfolio-demo', (req, res) => {
   res.json({
     assets: [
@@ -152,7 +153,14 @@ app.get('/api/portfolio-demo', (req, res) => {
     }
   });
 });
-
+*/
+app.get('/api/crypto/ws-status', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    connected: true,
+    message: 'WebSocket status check'
+  });
+});
 // Ruta para obtener precios de criptos
 app.post('/api/crypto/prices', (req, res) => {
   const { ids } = req.body;

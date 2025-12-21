@@ -308,7 +308,7 @@ useEffect(() => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <p className="text-sm text-gray-600">Precio actual</p>
-                  <p className="text-lg font-bold">${selectedAsset.currentPrice.toLocaleString()}</p>
+                  <p className="text-lg  font-bold text-gray-900">${selectedAsset.currentPrice.toLocaleString()}</p>
                 </div>
                 <div className={`p-3 rounded-lg ${
                   selectedAsset.change24h >= 0 ? 'bg-green-50' : 'bg-red-50'
