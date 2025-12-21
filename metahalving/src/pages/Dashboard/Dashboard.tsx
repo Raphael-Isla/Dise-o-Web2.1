@@ -47,15 +47,15 @@ useEffect(() => {
   }
 }, [portfolio?.lastSync]);
 
-  // Alternativa: Usar setTimeout
-  // useEffect(() => {
-  //   if (portfolio?.lastSync) {
-  //     const timer = setTimeout(() => {
-  //       setLastUpdated(portfolio.lastSync);
-  //     }, 0);
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [portfolio?.lastSync]);
+  useEffect(() => {
+  if (portfolio?.lastSync) {
+    const timer = setTimeout(() => {
+      setLastUpdated(portfolio.lastSync!);
+    }, 0);
+    return () => clearTimeout(timer);
+  }
+}, [portfolio?.lastSync]);
+
 
   // Simular estado de conexión
   useEffect(() => {
