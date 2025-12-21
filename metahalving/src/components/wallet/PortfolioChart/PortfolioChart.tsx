@@ -1,6 +1,6 @@
 import React from 'react';
 import type { CryptoAsset } from '../../../types/wallet.types';
-import { TrendingUp, TrendingDown, PieChart,  Zap } from 'lucide-react';
+import { TrendingUp, TrendingDown, PieChart, Zap } from 'lucide-react';
 
 interface PortfolioChartProps {
   data: CryptoAsset[];
@@ -59,7 +59,7 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
   }
 
   // Estado vacío
-  if (data.length === 0) {
+  if (!data || data.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
         <div className="flex flex-col items-center justify-center">
@@ -76,13 +76,44 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
     );
   }
 
+  // Filtrar datos válidos
+  const validData = data.filter(asset => 
+    asset && 
+    asset.valueUSD !== undefined && 
+    asset.valueUSD !== null
+  );
+
+  if (validData.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+        <div className="flex flex-col items-center justify-center">
+          <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <PieChart className="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Datos inválidos</h3>
+          <p className="text-gray-500 mb-4">Los datos del portfolio no son válidos</p>
+        </div>
+      </div>
+    );
+  }
+
   // Calcular total para porcentajes
-  const total = data.reduce((sum, asset) => sum + asset.valueUSD, 0);
+  const total = validData.reduce((sum, asset) => sum + asset.valueUSD, 0);
   
-  // Encontrar mejor y peor desempeño
-  const sortedByPerformance = [...data].sort((a, b) => b.change24h - a.change24h);
-  const bestPerformer = sortedByPerformance[0];
-  const worstPerformer = sortedByPerformance[sortedByPerformance.length - 1];
+  // Filtrar activos con change24h válido para encontrar mejor y peor desempeño
+  const validPerformanceData = validData.filter(asset => 
+    asset.change24h !== undefined && 
+    asset.change24h !== null
+  );
+
+  let bestPerformer: CryptoAsset | null = null;
+  let worstPerformer: CryptoAsset | null = null;
+
+  if (validPerformanceData.length > 0) {
+    const sortedByPerformance = [...validPerformanceData].sort((a, b) => b.change24h - a.change24h);
+    bestPerformer = sortedByPerformance[0];
+    worstPerformer = sortedByPerformance[sortedByPerformance.length - 1];
+  }
 
   // Formatear timestamp
   const formatTimeAgo = (date?: Date) => {
@@ -131,10 +162,10 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
         <div className="lg:w-2/5">
           <div className="relative h-72 w-72 mx-auto">
             <svg viewBox="0 0 100 100" className="h-full w-full">
-              {data.map((asset, index) => {
+              {validData.map((asset, index) => {
                 // Calcular ángulos
                 const startAngle = index === 0 ? 0 : 
-                  data.slice(0, index).reduce((sum, a) => sum + (a.valueUSD / total) * 360, 0);
+                  validData.slice(0, index).reduce((sum, a) => sum + (a.valueUSD / total) * 360, 0);
                 const angle = (asset.valueUSD / total) * 360;
                 
                 // Coordenadas para arco SVG
@@ -192,7 +223,7 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
             </svg>
           </div>
           
-          {/* Indicadores de rendimiento */}
+          {/* Indicadores de rendimiento - CORREGIDO */}
           <div className="mt-6 grid grid-cols-2 gap-3">
             {bestPerformer && (
               <div className="bg-green-50 p-3 rounded-lg">
@@ -202,12 +233,12 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
                 </div>
                 <div className="font-semibold text-green-900">{bestPerformer.symbol.toUpperCase()}</div>
                 <div className="text-sm text-green-600">
-                  +{bestPerformer.change24h.toFixed(1)}%
+                  +{bestPerformer.change24h?.toFixed(1) || '0.0'}%
                 </div>
               </div>
             )}
             
-            {worstPerformer && worstPerformer.change24h < 0 && (
+            {worstPerformer && worstPerformer.change24h !== undefined && worstPerformer.change24h < 0 && (
               <div className="bg-red-50 p-3 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-red-700">Peor rendimiento</div>
@@ -215,7 +246,7 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
                 </div>
                 <div className="font-semibold text-red-900">{worstPerformer.symbol.toUpperCase()}</div>
                 <div className="text-sm text-red-600">
-                  {worstPerformer.change24h.toFixed(1)}%
+                  {worstPerformer.change24h?.toFixed(1) || '0.0'}%
                 </div>
               </div>
             )}
@@ -225,9 +256,9 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
         {/* Leyenda mejorada */}
         <div className="lg:w-3/5">
           <div className="space-y-3">
-            {data.map((asset, index) => {
+            {validData.map((asset, index) => {
               const percentage = total > 0 ? (asset.valueUSD / total) * 100 : 0;
-              const isPositive = asset.change24h >= 0;
+              const isPositive = (asset.change24h || 0) >= 0;
               
               return (
                 <div 
@@ -252,11 +283,11 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
                         <span className={`text-xs font-medium ${
                           isPositive ? 'text-green-600' : 'text-red-600'
                         }`}>
-                          {isPositive ? '+' : ''}{asset.change24h.toFixed(2)}%
+                          {isPositive ? '+' : ''}{asset.change24h?.toFixed(2) || '0.00'}%
                         </span>
                         <span className="text-xs text-gray-500 mx-2">•</span>
                         <span className="text-xs text-gray-500">
-                          {asset.amount.toFixed(6)} {asset.symbol.toUpperCase()}
+                          {asset.amount?.toFixed(6) || '0'} {asset.symbol.toUpperCase()}
                         </span>
                       </div>
                     </div>
@@ -264,7 +295,7 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
                   
                   <div className="text-right ml-4">
                     <div className="font-semibold text-gray-900">
-                      ${asset.valueUSD.toLocaleString()}
+                      ${(asset.valueUSD || 0).toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-600">
                       {percentage.toFixed(1)}%
@@ -275,34 +306,35 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
             })}
           </div>
           
-          {/* Stats adicionales */}
+          {/* Stats adicionales - CORREGIDO */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <div className="text-sm text-blue-700 mb-1">Mayor tenencia</div>
                 <div className="font-bold text-lg text-gray-900">
-                  {data.length > 0 ? data[0].symbol.toUpperCase() : 'N/A'}
+                  {validData.length > 0 ? validData[0].symbol.toUpperCase() : 'N/A'}
                 </div>
                 <div className="text-sm text-blue-600">
-                  {total > 0 ? ((data[0]?.valueUSD / total) * 100).toFixed(1) : '0'}%
+                  {total > 0 && validData.length > 0 ? 
+                    ((validData[0]?.valueUSD || 0) / total * 100).toFixed(1) : '0'}%
                 </div>
               </div>
               
               <div className="bg-purple-50 p-4 rounded-lg">
                 <div className="text-sm text-purple-700 mb-1">Activos únicos</div>
                 <div className="font-bold text-lg text-gray-900">
-                  {data.length}
+                  {validData.length}
                 </div>
                 <div className="text-sm text-purple-600">
-                  {data.length > 1 ? 'diversificado' : 'por diversificar'}
+                  {validData.length > 1 ? 'diversificado' : 'por diversificar'}
                 </div>
               </div>
               
               <div className="bg-green-50 p-4 rounded-lg">
                 <div className="text-sm text-green-700 mb-1">Cambio promedio</div>
                 <div className="font-bold text-lg text-green-600">
-                  {data.length > 0 
-                    ? `+${(data.reduce((sum, a) => sum + a.change24h, 0) / data.length).toFixed(1)}%`
+                  {validPerformanceData.length > 0 
+                    ? `+${(validPerformanceData.reduce((sum, a) => sum + (a.change24h || 0), 0) / validPerformanceData.length).toFixed(1)}%`
                     : '0%'
                   }
                 </div>
@@ -317,17 +349,17 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-gray-700">Diversificación</span>
                 <span className="text-sm text-gray-600">
-                  {calculateDiversificationScore(data)}/100
+                  {calculateDiversificationScore(validData)}/100
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-primary-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${calculateDiversificationScore(data)}%` }}
+                  style={{ width: `${calculateDiversificationScore(validData)}%` }}
                 ></div>
               </div>
               <div className="text-xs text-gray-500 mt-2">
-                {getDiversificationMessage(data)}
+                {getDiversificationMessage(validData)}
               </div>
             </div>
           </div>
@@ -339,14 +371,17 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({
 
 // Función para calcular score de diversificación
 const calculateDiversificationScore = (assets: CryptoAsset[]): number => {
-  if (assets.length <= 1) return 10;
+  if (!assets || assets.length <= 1) return 10;
+  
+  // Calcular total
+  const total = assets.reduce((sum, asset) => sum + (asset.valueUSD || 0), 0);
+  if (total === 0) return 10;
   
   // Calcular índice de Herfindahl–Hirschman (HHI)
-  const total = assets.reduce((sum, asset) => sum + asset.valueUSD, 0);
   let hhi = 0;
   
   assets.forEach(asset => {
-    const share = (asset.valueUSD / total) * 100;
+    const share = ((asset.valueUSD || 0) / total) * 100;
     hhi += share * share;
   });
   
@@ -363,6 +398,8 @@ const calculateDiversificationScore = (assets: CryptoAsset[]): number => {
 
 // Función para mensaje de diversificación
 const getDiversificationMessage = (assets: CryptoAsset[]): string => {
+  if (!assets || assets.length === 0) return 'Sin datos';
+  
   const score = calculateDiversificationScore(assets);
   
   if (assets.length <= 1) return 'Agrega más activos para diversificar';

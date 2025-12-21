@@ -1,6 +1,6 @@
-// src/hooks/usePortfolio.ts - VERSIÓN CORREGIDA
+// src/hooks/usePortfolio.ts - VERSIÓN CON addAsset
 import { useState, useEffect, useCallback } from 'react';
-import type { WalletState, CryptoAsset, RealTimePrice } from '../types/wallet.types';
+import type { WalletState, CryptoAsset } from '../types/wallet.types';
 import { realWalletAPI } from '../services/api/realWalletAPI';
 import { portfolioWebSocket } from '../services/websocket/portfolioWebSocket';
 
@@ -9,6 +9,9 @@ interface UsePortfolioOptions {
   realTimeUpdates?: boolean;
 }
 
+// API gratuita para obtener precio de Bitcoin
+const BITCOIN_PRICE_API = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24h_change=true';
+
 export const usePortfolio = (options?: UsePortfolioOptions) => {
   const [portfolio, setPortfolio] = useState<WalletState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -16,10 +19,28 @@ export const usePortfolio = (options?: UsePortfolioOptions) => {
   const userId = options?.userId || 'demo';
   const realTimeUpdates = options?.realTimeUpdates ?? true;
 
+  // Función para obtener el precio REAL de Bitcoin
+  const fetchBitcoinPrice = useCallback(async () => {
+    try {
+      const response = await fetch(BITCOIN_PRICE_API);
+      if (!response.ok) throw new Error('Error fetching Bitcoin price');
+      
+      const data = await response.json();
+      const price = data.bitcoin.usd;
+      const change = data.bitcoin.usd_24h_change;
+      
+      return { price, change };
+    } catch (err) {
+      console.error('Error fetching Bitcoin price:', err);
+      // Usar precio por defecto si falla
+      return { price: 44774.04, change: 9.33 };
+    }
+  }, []);
+
   // Función para calcular el resumen
   const calculateSummary = useCallback((assets: CryptoAsset[]) => {
     const totalValue = assets.reduce((sum, asset) => sum + asset.valueUSD, 0);
-    const availableBalance = 5000; // Esto debería venir de una API
+    const availableBalance = 5000;
     const investedAmount = totalValue - availableBalance;
     
     // Calcular cambios
@@ -45,28 +66,28 @@ export const usePortfolio = (options?: UsePortfolioOptions) => {
     };
   }, []);
 
-  // Función para actualizar un asset específico con nuevos precios
-  const updateAssetPrice = useCallback((assetId: string, priceData: RealTimePrice) => {
+  // Función para actualizar el precio de Bitcoin específicamente
+  const updateBitcoinPrice = useCallback(async () => {
+    const { price: newPrice, change: newChange } = await fetchBitcoinPrice();
+    
     setPortfolio(prev => {
       if (!prev) return prev;
 
       const updatedAssets = prev.assets.map(asset => {
-        if (asset.id === assetId) {
-          const newValueUSD = asset.amount * priceData.price;
-          const change24h = priceData.changePercent;
+        if (asset.id === 'bitcoin' || asset.symbol === 'btc') {
+          const newValueUSD = asset.amount * newPrice;
           
           return {
             ...asset,
-            currentPrice: priceData.price,
+            currentPrice: newPrice,
             valueUSD: newValueUSD,
-            change24h,
+            change24h: newChange,
             lastUpdated: new Date()
           };
         }
         return asset;
       });
 
-      // Recalcular summary usando la función definida arriba
       const summary = calculateSummary(updatedAssets);
 
       return {
@@ -76,7 +97,7 @@ export const usePortfolio = (options?: UsePortfolioOptions) => {
         lastSync: new Date()
       };
     });
-  }, [calculateSummary]); // Agregar calculateSummary como dependencia
+  }, [fetchBitcoinPrice, calculateSummary]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -86,9 +107,32 @@ export const usePortfolio = (options?: UsePortfolioOptions) => {
         setError(null);
         
         const data = await realWalletAPI.getPortfolio(userId);
-        setPortfolio(data);
         
-        // Iniciar conexión WebSocket si se solicitan actualizaciones en tiempo real
+        // Obtener precio real de Bitcoin
+        const { price: btcPrice, change: btcChange } = await fetchBitcoinPrice();
+        
+        // Actualizar el asset de Bitcoin con precio real
+        const updatedAssets = data.assets.map(asset => {
+          if (asset.id === 'bitcoin' || asset.symbol === 'btc') {
+            return {
+              ...asset,
+              currentPrice: btcPrice,
+              valueUSD: asset.amount * btcPrice,
+              change24h: btcChange
+            };
+          }
+          return asset;
+        });
+
+        const summary = calculateSummary(updatedAssets);
+        
+        setPortfolio({
+          ...data,
+          assets: updatedAssets,
+          summary,
+          lastSync: new Date()
+        });
+        
         if (realTimeUpdates) {
           portfolioWebSocket.connect();
         }
@@ -96,8 +140,28 @@ export const usePortfolio = (options?: UsePortfolioOptions) => {
         console.error('Error fetching portfolio:', err);
         setError(err instanceof Error ? err.message : 'Error al cargar el portfolio');
         
-        // Fallback a datos mock si la API falla
-        setPortfolio(getMockPortfolio());
+        // Fallback a datos mock con precio real de Bitcoin
+        const mockPortfolio = getMockPortfolio();
+        const { price: btcPrice, change: btcChange } = await fetchBitcoinPrice();
+        const updatedMockAssets = mockPortfolio.assets.map(asset => {
+          if (asset.id === 'bitcoin') {
+            return {
+              ...asset,
+              currentPrice: btcPrice,
+              valueUSD: asset.amount * btcPrice,
+              change24h: btcChange
+            };
+          }
+          return asset;
+        });
+        
+        const mockSummary = calculateSummary(updatedMockAssets);
+        
+        setPortfolio({
+          ...mockPortfolio,
+          assets: updatedMockAssets,
+          summary: mockSummary
+        });
       } finally {
         setIsLoading(false);
       }
@@ -105,57 +169,65 @@ export const usePortfolio = (options?: UsePortfolioOptions) => {
 
     fetchPortfolio();
 
-    // Cleanup
     return () => {
       if (realTimeUpdates) {
         portfolioWebSocket.disconnect();
       }
     };
-  }, [userId, realTimeUpdates]);
+  }, [userId, realTimeUpdates, fetchBitcoinPrice, calculateSummary]);
 
-  // Suscribirse a actualizaciones en tiempo real
+  // Actualizar precio de Bitcoin automáticamente cada 30 segundos
   useEffect(() => {
-    if (!portfolio || !realTimeUpdates) return;
+    if (!realTimeUpdates || !portfolio) return;
 
-    const unsubscribeCallbacks: (() => void)[] = [];
+    const interval = setInterval(() => {
+      updateBitcoinPrice();
+    }, 30000);
 
-    // Suscribirse a cada asset del portfolio
-    portfolio.assets.forEach(asset => {
-      const unsubscribe = portfolioWebSocket.subscribeToAsset(
-        asset.id, 
-        (assetId, priceData) => {
-          updateAssetPrice(assetId, priceData);
-        }
-      );
-      unsubscribeCallbacks.push(unsubscribe);
-    });
-
-    // Cleanup
-    return () => {
-      unsubscribeCallbacks.forEach(unsubscribe => unsubscribe());
-    };
-  }, [portfolio, realTimeUpdates, updateAssetPrice]);
+    return () => clearInterval(interval);
+  }, [realTimeUpdates, portfolio, updateBitcoinPrice]);
 
   // Función para forzar una actualización
   const refreshPortfolio = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await realWalletAPI.getPortfolio(userId);
-      setPortfolio(data);
+      
+      // Obtener precio actual de Bitcoin
+      const { price: btcPrice, change: btcChange } = await fetchBitcoinPrice();
+      
+      // Actualizar Bitcoin con precio real
+      const updatedAssets = data.assets.map(asset => {
+        if (asset.id === 'bitcoin' || asset.symbol === 'btc') {
+          return {
+            ...asset,
+            currentPrice: btcPrice,
+            valueUSD: asset.amount * btcPrice,
+            change24h: btcChange
+          };
+        }
+        return asset;
+      });
+
+      const summary = calculateSummary(updatedAssets);
+      setPortfolio({
+        ...data,
+        assets: updatedAssets,
+        summary,
+        lastSync: new Date()
+      });
     } catch (err) {
       console.error('Error refreshing portfolio:', err);
+      // Si falla, al menos actualizar el precio de Bitcoin
+      await updateBitcoinPrice();
     } finally {
       setIsLoading(false);
     }
-  }, [userId]); // userId SÍ se usa aquí (en realWalletAPI.getPortfolio(userId))
+  }, [userId, fetchBitcoinPrice, calculateSummary, updateBitcoinPrice]);
 
   // Función para agregar un nuevo asset
   const addAsset = useCallback(async (newAsset: Omit<CryptoAsset, 'id' | 'valueUSD'>) => {
     try {
-      // Aquí iría la llamada a la API para agregar el asset
-      // const response = await walletAPI.addAsset(userId, newAsset);
-      
-      // Por ahora, actualizamos localmente
       const newAssetWithId: CryptoAsset = {
         ...newAsset,
         id: newAsset.symbol.toLowerCase(),
@@ -176,33 +248,23 @@ export const usePortfolio = (options?: UsePortfolioOptions) => {
         };
       });
 
-      // Suscribirse a actualizaciones del nuevo asset
-      if (realTimeUpdates) {
-        portfolioWebSocket.subscribeToAsset(
-          newAssetWithId.id,
-          (assetId, priceData) => {
-            updateAssetPrice(assetId, priceData);
-          }
-        );
-      }
-
     } catch (err) {
       console.error('Error adding asset:', err);
       throw err;
     }
-  }, [realTimeUpdates, updateAssetPrice, calculateSummary]); // Remover userId ya que no se usa directamente
+  }, [calculateSummary]);
 
   return { 
     portfolio, 
     isLoading, 
     error,
     refreshPortfolio,
-    addAsset,
-    updateAssetPrice
+    addAsset, // AÑADIDO: Esta función debe estar aquí
+    updateBitcoinPrice
   };
 };
 
-// Datos mock de respaldo (solo si la API falla)
+// Datos mock de respaldo
 const getMockPortfolio = (): WalletState => ({
   assets: [
     {
@@ -210,9 +272,9 @@ const getMockPortfolio = (): WalletState => ({
       symbol: 'btc',
       name: 'Bitcoin',
       amount: 0.5,
-      currentPrice: 45000,
-      valueUSD: 22500,
-      change24h: 2.5,
+      currentPrice: 44774.04,
+      valueUSD: 22387.02,
+      change24h: 9.33,
       allocation: 45,
       icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png',
       blockchain: 'Bitcoin'
@@ -222,9 +284,9 @@ const getMockPortfolio = (): WalletState => ({
       symbol: 'eth',
       name: 'Ethereum',
       amount: 3.2,
-      currentPrice: 3000,
-      valueUSD: 9600,
-      change24h: -1.2,
+      currentPrice: 3083.04,
+      valueUSD: 9865.72,
+      change24h: 8.12,
       allocation: 25,
       icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
       blockchain: 'Ethereum'
@@ -234,23 +296,23 @@ const getMockPortfolio = (): WalletState => ({
       symbol: 'sol',
       name: 'Solana',
       amount: 15,
-      currentPrice: 100,
-      valueUSD: 1500,
-      change24h: 5.3,
-      allocation: 10,
+      currentPrice: 98.18,
+      valueUSD: 1472.72,
+      change24h: 8.66,
+      allocation: 8.0,
       icon: 'https://cryptologos.cc/logos/solana-sol-logo.png',
       blockchain: 'Solana'
     }
   ],
   transactions: [],
   summary: {
-    totalValue: 33600,
-    totalChange24h: 850,
-    totalChangePercent: 2.59,
+    totalValue: 33725.46,
+    totalChange24h: 2830.45,
+    totalChangePercent: 9.16,
     availableBalance: 5000,
-    investedAmount: 28600,
-    profitLoss: 2200,
-    profitLossPercent: 8.33
+    investedAmount: 28725.46,
+    profitLoss: 2250.46,
+    profitLossPercent: 8.5
   },
   isLoading: false,
   error: null,
