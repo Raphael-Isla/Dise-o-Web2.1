@@ -1,11 +1,10 @@
-// src/components/dashboard/Dashboard.tsx
+// src/pages/Dashboard/Dashboard.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { BalanceCard } from '../../components/wallet/BalanceCard/BalanceCard';
 import AssetTable from '../../components/wallet/AssetTable/AssetTable';
 import { PortfolioChart } from '../../components/wallet/PortfolioChart/PortfolioChart';
 import { QuickActions } from '../../components/wallet/QuickActions/QuickActions';
-import { usePortfolio } from '../../hooks/usePortfolio';
-import type { CryptoAsset } from '../../types/wallet.types';
+import { useAuth } from '../../auth/hooks/useAuth';
 import { 
   Wallet, 
   TrendingUp, 
@@ -17,27 +16,105 @@ import {
   WifiOff,
   Clock,
   ChevronRight,
-  Download,
   MoreVertical,
   TrendingUp as ChartLine,
-  PieChart as ChartPie
+  PieChart as ChartPie,
+  User
 } from 'lucide-react';
 
+interface CryptoAsset {
+  id: string;
+  symbol: string;
+  name: string;
+  currentPrice: number;
+  amount: number;
+  valueUSD: number;
+  change24h: number;
+  allocation?: number;
+  lastUpdated?: Date;
+  icon?: string;
+}
+
+interface PortfolioSummary {
+  totalValue: number;
+  availableBalance: number;
+  investedAmount: number;
+  profitLoss: number;
+  profitLossPercent: number;
+  totalChange24h: number;
+  totalChangePercent: number;
+}
+
+interface Portfolio {
+  summary: PortfolioSummary;
+  assets: CryptoAsset[];
+  lastSync?: Date;
+}
+
 const Dashboard: React.FC = () => {
-  const { 
-    portfolio, 
-    isLoading, 
-    error, 
-    refreshPortfolio 
-  } = usePortfolio({
-    userId: 'demo',
-    realTimeUpdates: true
-  });
-  
+  const { user } = useAuth();
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<CryptoAsset | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('connected');
+
+  // Cargar portfolio del usuario
+  useEffect(() => {
+    const loadPortfolio = async () => {
+      if (!user) {
+        setIsLoading(false);
+        setError('Usuario no autenticado');
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        
+        // Simular carga de datos (en producción esto vendría de una API)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Transformar datos del usuario al formato de portfolio
+        const portfolioData: Portfolio = {
+          summary: {
+            totalValue: user.dashboard.totalBalance,
+            availableBalance: user.dashboard.availableCash,
+            investedAmount: user.dashboard.totalInvested,
+            profitLoss: user.dashboard.totalProfit,
+            profitLossPercent: user.dashboard.totalInvested > 0 ? 
+              (user.dashboard.totalProfit / user.dashboard.totalInvested) * 100 : 0,
+            totalChange24h: 0, // Esto vendría de una API de precios
+            totalChangePercent: 0
+          },
+          assets: user.wallet.cryptoHoldings.map(holding => ({
+            id: holding.id || holding.symbol,
+            symbol: holding.symbol,
+            name: holding.name,
+            currentPrice: holding.currentValue,
+            amount: holding.amount,
+            valueUSD: holding.totalValue,
+            change24h: holding.change24h || 0,
+            allocation: holding.allocation || 0,
+            lastUpdated: new Date()
+          })),
+          lastSync: new Date()
+        };
+        
+        setPortfolio(portfolioData);
+        setLastUpdated(new Date());
+        setError(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (err: any) {
+        setError(err.message || 'Error al cargar el portfolio');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPortfolio();
+  }, [user]);
 
   // Actualizar timestamp cuando cambie el portfolio
   useEffect(() => {
@@ -60,13 +137,14 @@ const Dashboard: React.FC = () => {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await refreshPortfolio();
+    // Recargar datos
+    await new Promise(resolve => setTimeout(resolve, 1000));
     setIsRefreshing(false);
-  }, [refreshPortfolio]);
+  }, []);
 
   const handleAddAsset = async () => {
-    // Esto abriría un modal/formulario para agregar nuevo activo
-    console.log('Agregar nuevo activo');
+    // Redirigir a la página de mercados para comprar activos
+    window.location.href = '/markets';
   };
 
   const formatTimeAgo = useCallback((date: Date) => {
@@ -89,8 +167,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
         <div className="text-center space-y-2">
-          <p className="text-lg font-medium text-gray-900">Cargando datos en tiempo real</p>
-          <p className="text-gray-500 text-sm">Obteniendo información actualizada del mercado</p>
+          <p className="text-lg font-medium text-gray-900">Cargando tu portfolio</p>
+          <p className="text-gray-500 text-sm">Obteniendo información actualizada</p>
         </div>
       </div>
     );
@@ -116,27 +194,7 @@ const Dashboard: React.FC = () => {
                 >
                   Reintentar
                 </button>
-                <button className="px-5 py-2.5 border border-red-300 text-red-700 rounded-xl hover:bg-red-50 transition-colors">
-                  Ver datos de ejemplo
-                </button>
               </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Mostrar datos mock como fallback */}
-        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
-              <Clock className="h-5 w-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-amber-900 font-medium">
-                Mostrando datos de demostración
-              </p>
-              <p className="text-amber-700 text-sm">
-                Los precios no son en tiempo real
-              </p>
             </div>
           </div>
         </div>
@@ -154,12 +212,19 @@ const Dashboard: React.FC = () => {
               <ChartPie className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">Dashboard de Portfolio</h1>
-              <p className="text-gray-600 mt-1">Análisis detallado de tus inversiones en criptomonedas</p>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
+                ¡Hola, {user?.name || user?.email?.split('@')[0] || 'Inversor'}!
+              </h1>
+              <p className="text-gray-600 mt-1">Tu dashboard de inversiones en criptomonedas</p>
             </div>
           </div>
           
           <div className="flex flex-wrap items-center gap-4 mt-4">
+            <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg">
+              <User className="h-4 w-4" />
+              <span>{user?.email}</span>
+            </div>
+            
             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
               connectionStatus === 'connected' 
                 ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 shadow-sm' 
@@ -169,7 +234,7 @@ const Dashboard: React.FC = () => {
                 <>
                   <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
                   <Wifi className="h-4 w-4" />
-                  <span>Conectado • Tiempo real</span>
+                  <span>Conectado</span>
                 </>
               ) : (
                 <>
@@ -204,11 +269,7 @@ const Dashboard: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all shadow-sm hover:shadow"
           >
             <Plus className="h-5 w-5" />
-            <span>Agregar Activo</span>
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 bg-white text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm hover:shadow">
-            <Download className="h-4 w-4" />
-            <span>Exportar</span>
+            <span>Comprar Activos</span>
           </button>
         </div>
       </div>
@@ -222,7 +283,7 @@ const Dashboard: React.FC = () => {
           changePercent={portfolio?.summary.totalChangePercent || 0}
           icon={Wallet}
           isLoading={isLoading}
-          />
+        />
         <BalanceCard    
           title="Balance Disponible"
           amount={portfolio?.summary.availableBalance || 0}
@@ -230,7 +291,6 @@ const Dashboard: React.FC = () => {
           changePercent={0}
           icon={DollarSign}
           isLoading={isLoading}
-            
         />
         <BalanceCard
           title="Invertido"
@@ -239,7 +299,6 @@ const Dashboard: React.FC = () => {
           changePercent={0}
           icon={TrendingUp}
           isLoading={isLoading}
-          
         />
         <BalanceCard
           title="Ganancias/Pérdidas"
@@ -249,22 +308,64 @@ const Dashboard: React.FC = () => {
           icon={ArrowUpDown}
           isLoading={isLoading}
           isPositive={portfolio?.summary.profitLoss ? portfolio.summary.profitLoss >= 0 : true}
-          
         />
       </div>
 
+      {/* Bienvenida para nuevos usuarios */}
+      {user && portfolio && portfolio.summary.totalValue === 0 && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                <span className="text-2xl">🎉</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-green-900 mb-2">¡Bienvenido a MetaHalving!</h3>
+              <p className="text-green-800 mb-3">
+                Te hemos acreditado <span className="font-bold text-green-900">$10,000 USD</span> para que comiences a invertir en criptomonedas.
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-green-700">Ve a <strong>Mercados</strong> para ver las criptomonedas disponibles</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <span className="text-green-700">Compra desde tu <strong>Wallet</strong> con un solo clic</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                  <span className="text-green-700">Revisa tus <strong>Transacciones</strong> para ver tu historial</span>
+                </div>
+              </div>
+              <div className="mt-4">
+                <button 
+                  onClick={() => window.location.href = '/markets'}
+                  className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-medium shadow-sm hover:shadow"
+                >
+                  Comenzar a invertir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chart and Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <PortfolioChart 
-            data={portfolio?.assets || []}
-            isLoading={isLoading}
-          />
+      {portfolio && portfolio.assets.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <PortfolioChart 
+              data={portfolio?.assets || []}
+              isLoading={isLoading}
+            />
+          </div>
+          <div>
+            <QuickActions />
+          </div>
         </div>
-        <div>
-          <QuickActions />
-        </div>
-      </div>
+      )}
 
       {/* Assets Table con indicador de tiempo real */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -278,54 +379,75 @@ const Dashboard: React.FC = () => {
                 </span>
               </h2>
               <p className="text-gray-600 mt-1">
-                {connectionStatus === 'connected' ? (
-                  <span className="flex items-center gap-1.5">
-                    <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                    Precios en tiempo real • Actualización cada 10s
-                  </span>
-                ) : 'Datos fuera de línea'}
+                {portfolio?.assets.length === 0 ? (
+                  "No tienes criptomonedas en tu portfolio"
+                ) : (
+                  connectionStatus === 'connected' ? (
+                    <span className="flex items-center gap-1.5">
+                      <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                      Precios actualizados
+                    </span>
+                  ) : 'Datos fuera de línea'
+                )}
               </p>
             </div>
-            <div className="flex gap-3">
-              <button className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-primary-50 transition-colors">
-                <span>Ver historial</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-              <button 
-                onClick={handleAddAsset}
-                className="text-sm bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-1.5 rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all shadow-sm flex items-center gap-1"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Agregar</span>
-              </button>
-            </div>
+            {portfolio && portfolio.assets.length > 0 && (
+              <div className="flex gap-3">
+                <button 
+                  onClick={handleAddAsset}
+                  className="text-sm bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-1.5 rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all shadow-sm flex items-center gap-1"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Agregar más</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
         
         <div className="p-1">
-          <AssetTable
-            assets={portfolio?.assets || []}
-            onAssetClick={setSelectedAsset}
-            showLiveIndicator={connectionStatus === 'connected'}
-          />
+          {portfolio && portfolio.assets.length > 0 ? (
+            <AssetTable
+              assets={portfolio.assets}
+              onAssetClick={setSelectedAsset}
+              showLiveIndicator={connectionStatus === 'connected'}
+            />
+          ) : (
+            <div className="text-center py-12">
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
+                <Wallet className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Tu portfolio está vacío</h3>
+              <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                Comienza a construir tu portfolio invirtiendo en criptomonedas. Tienes $10,000 USD disponibles para invertir.
+              </p>
+              <button 
+                onClick={() => window.location.href = '/markets'}
+                className="px-6 py-3 bg-gradient-to-r from-primary-600 to-blue-600 text-white rounded-lg hover:from-primary-700 hover:to-blue-700 transition-all font-medium shadow-sm hover:shadow"
+              >
+                Explorar Mercados
+              </button>
+            </div>
+          )}
         </div>
         
         {/* Footer de la tabla */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span>Total del portfolio</span>
+        {portfolio && portfolio.assets.length > 0 && (
+          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+              <span>Total del portfolio</span>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-gray-900">
+                ${portfolio.summary.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-sm text-gray-500">
+                Disponible: ${portfolio.summary.availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-gray-900">
-              ${portfolio?.summary.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-            </p>
-            <p className="text-sm text-gray-500">
-              {portfolio?.summary.totalChange24h && portfolio.summary.totalChange24h >= 0 ? '+' : ''}
-              {portfolio?.summary.totalChangePercent?.toFixed(2) || '0.00'}% (24h)
-            </p>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Asset Details Modal */}
@@ -405,7 +527,10 @@ const Dashboard: React.FC = () => {
               </div>
               
               <div className="pt-4 space-y-3">
-                <button className="w-full bg-gradient-to-r from-primary-600 to-primary-700 text-white py-3 rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all font-medium shadow-sm hover:shadow">
+                <button 
+                  onClick={() => window.location.href = `/markets?asset=${selectedAsset.symbol}`}
+                  className="w-full bg-gradient-to-r from-primary-600 to-primary-700 text-white py-3 rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all font-medium shadow-sm hover:shadow"
+                >
                   Comprar más {selectedAsset.symbol.toUpperCase()}
                 </button>
                 <div className="grid grid-cols-3 gap-2">

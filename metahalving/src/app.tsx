@@ -1,14 +1,19 @@
-// src/App.tsx - NUEVA VERSIÓN COMPLETA
+// src/App.tsx - VERSIÓN CORREGIDA
 import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './auth/contexts/AuthContext';
 import { useAuth } from './auth/hooks/useAuth';
-import Dashboard from './pages/Dashboard/Dashboard';
 import Login from './auth/pages/Login';
 import Register from './auth/pages/Register';
-import Header from './components/Layout/Header/Header';
-import Sidebar from './components/Layout/Sidebar/Sidebar';
-import { ProtectedRoute } from './components/common/ProtectedRoute/ProtectedRoute';
-import AlertNotifications from './components/common/AlertNotifications/AlertNotifications';  
+import Dashboard from './pages/Dashboard/Dashboard';
+import Markets from './pages/Markets/Markets';
+import Settings from './pages/Settings/Settings';
+import Transactions from './pages/Transactions/Transactions';
+import Wallet from './pages/Wallet/Wallet';
+import Layout from './components/Layout/LAyout';
+import AlertNotifications from './components/common/AlertNotifications/AlertNotifications';
+import ProtectedRoute from './components/common/ProtectedRoute/ProtectedRoute';
+import { UIProvider } from './contexts/UIContext';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -24,37 +29,42 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Mostrar login si no está autenticado
-  if (!isAuthenticated) {
-    const path = window.location.pathname;
-    if (path === '/register') {
-      return <Register />;
-    }
-    return <Login />;
-  }
-
-  // Usuario autenticado - mostrar app
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-6">
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        </main>
-      </div>
+    <>
+      <Routes>
+        {/* Rutas públicas */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* Rutas protegidas con Layout */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}> {/* Layout sin children */}
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/markets" element={<Markets />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/transactions" element={<Transactions />} />
+            <Route path="/wallet" element={<Wallet />} />
+          </Route>
+        </Route>
+
+        {/* Ruta por defecto */}
+        <Route 
+          path="*" 
+          element={<Navigate to={isAuthenticated ? "/" : "/login"} />} 
+        />
+      </Routes>
       <AlertNotifications />
-    </div>
+    </>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
+     <AuthProvider>
+    <UIProvider>
       <AppContent />
-    </AuthProvider>
+    </UIProvider>
+  </AuthProvider>
   );
 };
 

@@ -1,76 +1,53 @@
 // src/components/common/ConnectionStatus/ConnectionStatus.tsx
 import React, { useState, useEffect } from 'react';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
-import { priceFeedService } from '../../../services/websocket/priceFeed';
-import { cryptoAPI } from '../../../services/api/cryptoAPI';
 
-export const ConnectionStatus: React.FC = () => {
-  const [isConnected, setIsConnected] = useState(priceFeedService.isConnectedToSocket());
-  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+const ConnectionStatus: React.FC = () => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
-  const checkApiStatus = async () => {
-    try {
-      await cryptoAPI.getWebSocketStatus();
-      setApiStatus('online');
-    } catch (error) {
-      console.error('Error checking API status:', error);
-      setApiStatus('offline');
-    }
-  };
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
 
-  checkApiStatus();
-  const interval = setInterval(checkApiStatus, 30000); // Verificar cada 30 segundos
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
-  return () => clearInterval(interval);
-}, []);
-
-  useEffect(() => {
-    const checkConnection = () => {
-      setIsConnected(priceFeedService.isConnectedToSocket());
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
-
-    const interval = setInterval(checkConnection, 5000);
-    return () => clearInterval(interval);
   }, []);
 
-  const handleReconnect = () => {
-    // Aquí podrías implementar lógica de reconexión
-    window.location.reload();
+  const handleRefresh = () => {
+    setIsChecking(true);
+    setTimeout(() => {
+      setIsChecking(false);
+      setIsOnline(navigator.onLine);
+    }, 1000);
   };
 
-  const getStatusColor = () => {
-    if (!isConnected || apiStatus !== 'online') return 'text-red-500';
-    return 'text-green-500';
-  };
-
-  const getStatusText = () => {
-    if (apiStatus === 'checking') return 'Verificando conexión...';
-    if (!isConnected || apiStatus !== 'online') return 'Conexión limitada';
-    return 'Conectado en tiempo real';
-  };
+  if (isOnline) {
+    return (
+      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 text-sm font-medium shadow-sm">
+        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+        <Wifi className="h-4 w-4" />
+        <span>Conectado</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <div className={`flex items-center gap-1 ${getStatusColor()}`}>
-        {isConnected && apiStatus === 'online' ? (
-          <Wifi className="h-4 w-4" />
-        ) : (
-          <WifiOff className="h-4 w-4" />
-        )}
-        <span>{getStatusText()}</span>
-      </div>
-      
-      {(apiStatus !== 'online' || !isConnected) && (
-        <button
-          onClick={handleReconnect}
-          className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
-          title="Reintentar conexión"
-        >
-          <RefreshCw className="h-3 w-3" />
-        </button>
-      )}
-    </div>
+    <button
+      onClick={handleRefresh}
+      disabled={isChecking}
+      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-100 to-rose-100 text-red-800 text-sm font-medium shadow-sm hover:from-red-200 hover:to-rose-200 transition-all disabled:opacity-50"
+    >
+      <div className="h-2 w-2 rounded-full bg-red-500"></div>
+      <WifiOff className="h-4 w-4" />
+      <span>Sin conexión</span>
+      <RefreshCw className={`h-3 w-3 ${isChecking ? 'animate-spin' : ''}`} />
+    </button>
   );
 };
 

@@ -159,7 +159,49 @@ export interface PortfolioAsset {
   change24h: number;
   allocation?: number;
 }
+/*export interface CryptoHolding {
+  id: string;
+  symbol: string;
+  name: string;
+  amount: number;
+  currentValue: number;
+  totalValue: number;
+  change24h: number;
+  allocation: number;
+  icon?: string;
+  blockchain?: string;
+  lastUpdated?: Date;
+}
+export interface Transaction {
+  id: string;
+  type: 'buy' | 'sell' | 'deposit' | 'withdrawal';
+  asset?: string;
+  amount: number;
+  price?: number;
+  total: number;
+  date: string;
+  status: 'completed' | 'pending' | 'failed';
+}
 
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt: string;
+  dashboard: {
+    totalBalance: number;
+    totalInvested: number;
+    totalProfit: number;
+    portfolioValue: number;
+    availableCash: number;
+  };
+  wallet: {
+    balance: number;
+    transactions: Transaction[];
+    cryptoHoldings: CryptoHolding[];
+  };
+}
+*/
 class CryptoAPI {
   private api = axios.create({
     baseURL: API_BASE_URL,

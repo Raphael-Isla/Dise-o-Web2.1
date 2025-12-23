@@ -55,7 +55,8 @@ export interface Transaction {
 
 export interface WalletState {
   assets: CryptoAsset[];
-  transactions: Transaction[]; // Cambia any[] por Transaction[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  transactions: any ; // Cambia any[] por Transaction[]
   summary: PortfolioSummary;
   isLoading: boolean;
   error: string | null;

@@ -4,7 +4,8 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, UserPlus, Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Login: React.FC = () => {
   const { login, error, isLoading, clearError } = useAuth();
@@ -141,11 +142,43 @@ const Login: React.FC = () => {
             </button>
           </form>
 
+          {/* Sección de registro */}
           <div className="mt-6 pt-6 border-t border-white/20">
-            <p className="text-xs text-gray-400 text-center mb-2">📌 Credenciales de demo:</p>
-            <div className="bg-white/5 rounded-lg p-3 text-xs text-gray-300 space-y-1">
-              <p><span className="text-primary-400">Email:</span> demo@metahalving.com</p>
-              <p><span className="text-primary-400">Password:</span> password123</p>
+            <div className="text-center mb-4">
+              <p className="text-gray-300 mb-3">¿No tienes una cuenta?</p>
+              <Link 
+                to="/register" 
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-300 font-medium shadow-sm hover:shadow"
+              >
+                <UserPlus className="h-5 w-5" />
+                Crear cuenta gratis
+              </Link>
+            </div>
+            
+            <div className="bg-white/5 rounded-xl p-4 mb-4">
+              <h3 className="text-sm font-medium text-green-400 mb-2 flex items-center gap-2">
+                <Check className="h-4 w-4" />
+                Beneficios de registrarte
+              </h3>
+              <ul className="text-xs text-gray-300 space-y-1">
+                <li>• $10,000 USD iniciales para invertir</li>
+                <li>• Dashboard personalizado</li>
+                <li>• Wallet de criptomonedas</li>
+                <li>• Seguimiento de transacciones</li>
+                <li>• Acceso a mercados en tiempo real</li>
+              </ul>
+            </div>
+
+            {/* Credenciales demo */}
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <p className="text-xs text-gray-400 text-center mb-2">📌 Credenciales de demo:</p>
+              <div className="bg-white/5 rounded-lg p-3 text-xs text-gray-300 space-y-1">
+                <p><span className="text-primary-400">Email:</span> demo@metahalving.com</p>
+                <p><span className="text-primary-400">Password:</span> password123</p>
+              </div>
+              <p className="text-xs text-gray-500 text-center mt-2">
+                Nota: La cuenta demo tiene datos pre-cargados, mientras que al registrarte comenzarás desde cero.
+              </p>
             </div>
           </div>
         </div>

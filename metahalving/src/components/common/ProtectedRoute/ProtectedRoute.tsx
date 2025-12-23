@@ -4,14 +4,15 @@
 
 import React from 'react';
 import { useAuth } from '../../../auth/hooks/useAuth';
+import { Outlet } from 'react-router-dom';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   fallback?: React.ReactNode;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
+  
   fallback 
 }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -54,7 +55,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  return <>{children}</>;
+    return <Outlet/>;
 };
 
 export default ProtectedRoute;
