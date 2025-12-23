@@ -15,11 +15,11 @@ import {
   Zap,
   PieChart
 } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../../auth/hooks/useAuth';
 const Sidebar: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
 
   const menuItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
@@ -29,10 +29,13 @@ const Sidebar: React.FC = () => {
     { path: '/settings', icon: SettingsIcon, label: 'Configuración' },
   ];
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    navigate('/login');
-  };
+  // En el componente
+const { logout } = useAuth();
+
+const handleLogout = () => {
+  logout();
+  window.location.href = '/login';
+};
 
   return (
     <aside className="hidden lg:block w-72 bg-gradient-to-b from-white to-gray-50 border-r border-gray-200/80 min-h-screen shadow-sm">
